@@ -1,5 +1,7 @@
 # BG Voice — Android push-to-talk client
 
+![BG Voice on a vivo V2515](docs/screenshot.png)
+
 Minimal Flutter Android app for [`hass-bulgarian-commands`](../hass-bulgarian-commands):
 hold the microphone, speak Bulgarian, release — the gateway transcribes, matches
 the command and acts on Home Assistant. Text replies are shown; commands marked
