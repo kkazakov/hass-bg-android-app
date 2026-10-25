@@ -386,7 +386,18 @@ class _HomePageState extends State<HomePage> {
                   );
                   return Column(
                     children: [
-                      SizedBox(height: topGap),
+                      // The title lives inside the gap above the mic, so it is
+                      // visible without moving the mic from its fixed slot.
+                      SizedBox(
+                        height: topGap,
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(24, 0, 24, 18),
+                            child: _buildActiveGatewayTitle(theme),
+                          ),
+                        ),
+                      ),
                       _buildMicButton(theme),
                       const SizedBox(height: 18),
                       Text(
@@ -453,6 +464,21 @@ class _HomePageState extends State<HomePage> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildActiveGatewayTitle(ThemeData theme) {
+    final gateway = _active;
+    if (gateway == null) return const SizedBox.shrink();
+    return Text(
+      gateway.name,
+      key: const ValueKey('active-gateway-title'),
+      textAlign: TextAlign.center,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.headlineSmall?.copyWith(
+        fontWeight: FontWeight.w600,
       ),
     );
   }

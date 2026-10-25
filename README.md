@@ -95,7 +95,8 @@ The new gateway becomes active immediately and is saved.
 
 The chips at the top are the saved gateways. Tap one to make it active. The
 active id is stored in `SharedPreferences` and restored on the next launch. The
-gateway URL is shown at the bottom while idle.
+active gateway's name is shown as a title above the mic, and its URL is shown at
+the bottom while idle.
 
 ### Talk
 

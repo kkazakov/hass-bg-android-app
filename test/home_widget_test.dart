@@ -16,6 +16,27 @@ void main() {
     expect(find.byIcon(Icons.mic), findsOneWidget);
     expect(find.textContaining('Няма добавен gateway'), findsOneWidget);
     expect(find.text('Задръж и говори'), findsOneWidget);
+    expect(find.byKey(const ValueKey('active-gateway-title')), findsNothing);
+  });
+
+  testWidgets('active gateway is titled above the microphone', (tester) async {
+    await tester.pumpWidget(const HassVoiceApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.add_link));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, '192.168.1.5:8125');
+    await tester.enterText(find.byType(TextField).at(1), 'Вкъщи');
+    await tester.tap(find.widgetWithText(FilledButton, 'Добави'));
+    await tester.pumpAndSettle();
+
+    final title = find.byKey(const ValueKey('active-gateway-title'));
+    expect(title, findsOneWidget);
+    expect(tester.widget<Text>(title).data, 'Вкъщи');
+    expect(
+      tester.getCenter(title).dy,
+      lessThan(tester.getCenter(find.byIcon(Icons.mic)).dy),
+    );
   });
 
   testWidgets('add, long-press and delete a gateway', (tester) async {
