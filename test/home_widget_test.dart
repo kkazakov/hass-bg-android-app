@@ -9,17 +9,17 @@ void main() {
   });
 
   testWidgets('empty state shows the microphone and a hint', (tester) async {
-    await tester.pumpWidget(const BgVoiceApp());
+    await tester.pumpWidget(const HassVoiceApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('BG Voice'), findsOneWidget);
+    expect(find.text('HASS Voice'), findsOneWidget);
     expect(find.byIcon(Icons.mic), findsOneWidget);
     expect(find.textContaining('Няма добавен gateway'), findsOneWidget);
     expect(find.text('Задръж и говори'), findsOneWidget);
   });
 
   testWidgets('add, long-press and delete a gateway', (tester) async {
-    await tester.pumpWidget(const BgVoiceApp());
+    await tester.pumpWidget(const HassVoiceApp());
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.add_link));
@@ -47,7 +47,7 @@ void main() {
   testWidgets('gateway secret is saved, prefilled and can be cleared', (
     tester,
   ) async {
-    await tester.pumpWidget(const BgVoiceApp());
+    await tester.pumpWidget(const HassVoiceApp());
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.add_link));

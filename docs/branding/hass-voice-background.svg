@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>HASS Voice</title>
+  <defs>
+    <!-- Home Assistant blue to the app's Bulgarian-green accent. -->
+    <linearGradient id="bg" x1="0.05" y1="0" x2="0.95" y2="1">
+      <stop offset="0" stop-color="#18bcf2"/>
+      <stop offset="0.55" stop-color="#18bcf2"/>
+      <stop offset="1" stop-color="#0e8b78"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.22" cy="0.06" r="0.85">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f0fbff"/>
+    </linearGradient>
+    <filter id="shadow" x="-40%" y="-35%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="9" stdDeviation="11" flood-color="#043c36" flood-opacity="0.30"/>
+    </filter>
+  </defs>
+  <!-- Full-bleed adaptive background. -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#glow)"/>
+</svg>

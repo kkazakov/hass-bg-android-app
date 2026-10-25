@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>HASS Voice</title>
+  <defs>
+    <!-- Home Assistant blue to the app's Bulgarian-green accent. -->
+    <linearGradient id="bg" x1="0.05" y1="0" x2="0.95" y2="1">
+      <stop offset="0" stop-color="#18bcf2"/>
+      <stop offset="0.55" stop-color="#18bcf2"/>
+      <stop offset="1" stop-color="#0e8b78"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.22" cy="0.06" r="0.85">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f0fbff"/>
+    </linearGradient>
+    <filter id="shadow" x="-40%" y="-35%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="9" stdDeviation="11" flood-color="#043c36" flood-opacity="0.30"/>
+    </filter>
+  </defs>
+  <!-- Round launch icon. -->
+  <circle cx="256" cy="256" r="256" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="256" fill="url(#glow)"/>
+  <g transform="translate(256 256) scale(1.21) translate(-256 -256)"><path d="M 232 106 Q 256 98 280 106 L 390 212 Q 404 224 404 246 L 404 324 Q 404 350 378 350 L 302 350 C 286 368 200 380 166 410 C 196 366 192 366 186 350 L 134 350 Q 108 350 108 324 L 108 246 Q 108 224 122 212 Z" fill="url(#paper)" filter="url(#shadow)"/><path transform="translate(143.3680 328.2840) scale(0.156000 -0.156000)" d="M160 0Q113 0 88.5 24.5Q64 49 64 95V610Q64 656 88.5 680.5Q113 705 160 705H404Q480 705 533.5 682.5Q587 660 615.0 619.0Q643 578 643 523Q643 461 607.5 417.0Q572 373 511 357V373Q583 360 622.5 315.0Q662 270 662 200Q662 107 595.5 53.5Q529 0 414 0ZM240 135H389Q440 135 463.5 154.5Q487 174 487 213Q487 252 463.5 271.0Q440 290 389 290H240ZM240 425H371Q421 425 444.5 443.0Q468 461 468 498Q468 535 444.5 552.5Q421 570 371 570H240Z" fill="#074c46"/><path transform="translate(251.3200 328.2840) scale(0.156000 -0.156000)" d="M424 -11Q303 -11 218.5 34.0Q134 79 90.0 160.0Q46 241 46 349Q46 433 72.5 500.5Q99 568 149.0 616.5Q199 665 271.5 690.5Q344 716 436 716Q486 716 538.0 706.5Q590 697 640 671Q666 659 675.5 637.5Q685 616 681.5 592.5Q678 569 664.5 549.5Q651 530 628.0 523.5Q605 517 576 530Q546 544 511.0 551.5Q476 559 437 559Q370 559 325.5 535.0Q281 511 259.0 464.0Q237 417 237 349Q237 247 287.0 195.0Q337 143 435 143Q465 143 500.5 149.0Q536 155 572 166L538 97V268H468Q434 268 415.5 285.0Q397 302 397 333Q397 364 415.5 380.5Q434 397 468 397H616Q651 397 669.5 378.5Q688 360 688 325V104Q688 74 675.5 53.0Q663 32 636 23Q589 7 534.0 -2.0Q479 -11 424 -11Z" fill="#074c46"/></g>
+</svg>

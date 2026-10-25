@@ -16,17 +16,17 @@ void main() {
   // Portrait only: the manifest locks the activity, this keeps the engine in
   // step when the platform ignores the attribute (multi-window, large screens).
   SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
-  runApp(const BgVoiceApp());
+  runApp(const HassVoiceApp());
 }
 
-class BgVoiceApp extends StatelessWidget {
-  const BgVoiceApp({super.key});
+class HassVoiceApp extends StatelessWidget {
+  const HassVoiceApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     const seed = Color(0xFF0E7C66);
     return MaterialApp(
-      title: 'BG Voice',
+      title: 'HASS Voice',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(colorSchemeSeed: seed, brightness: Brightness.light),
       darkTheme: ThemeData(colorSchemeSeed: seed, brightness: Brightness.dark),
@@ -362,7 +362,7 @@ class _HomePageState extends State<HomePage> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('BG Voice'),
+        title: const Text('HASS Voice'),
         actions: [
           IconButton(
             tooltip: 'Добави gateway',

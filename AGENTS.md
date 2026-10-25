@@ -4,7 +4,7 @@ Guidelines for agentic coding agents (and humans) working in this repository.
 
 ## Project overview
 
-A small Flutter Android app (push-to-talk) for
+**HASS Voice** is a small Flutter Android app (push-to-talk) for
 [`hass-bg-gateway`](https://github.com/kkazakov/hass-bg-gateway). Hold the mic,
 speak Bulgarian, release: the app records 16 kHz mono WAV, uploads it to
 `POST /v1/voice`, shows the text reply, and plays the returned audio when the
@@ -68,8 +68,8 @@ test/
   models_test.dart       URL normalisation, secret parsing, store round-trip
   api_test.dart          X-API-Key presence/absence, audio download, 401
   home_widget_test.dart  add/edit/delete and secret widget flows
-android/                  manifest, SDK levels, launcher
-docs/                     screenshots used by README
+android/                  manifest, SDK levels, adaptive launcher icons
+docs/                     screenshots and launcher-icon sources (docs/branding)
 ```
 
 ## Setup and build
@@ -92,6 +92,12 @@ Debug build is ~167 MB. Do not build with Java 27 — the current AGP rejects it
 - Keep the app single-screen and dependency-light; it is a remote control, not a
   platform.
 - Bulgarian UI strings; technical terms (`URL`, `Gateway`) stay English.
+- The launcher label is `HASS Voice`. Keep the applicationId
+  `bg.krasi.hass_bulgarian_voice` and the Dart package `hass_bulgarian_voice`:
+  changing them breaks saved gateways/imports.
+- Launcher art is source-controlled in `docs/branding/` as self-contained SVGs;
+  `docs/branding/render-icons.sh` regenerates the `mipmap-*` PNGs with
+  `rsvg-convert`. Keep the `ic_launcher_monochrome` layer for themed icons.
 - All HTTP goes through `GatewayClient`; all persistence through `GatewayStore`.
 - Delete the temporary WAV after send or cancel (`_deleteFile`).
 - Do not add background audio, wake word or always-on microphone without an
@@ -133,6 +139,10 @@ Debug build is ~167 MB. Do not build with Java 27 — the current AGP rejects it
   before changing UI logic.
 - The package id is `bg.krasi.hass_bulgarian_voice`; changing it breaks existing
   stored preferences.
+- **Launcher icon scales differ on purpose.** The adaptive foreground and
+  monochrome SVGs draw the bubble at 0.84× so it sits at ~73% of the 72dp
+  viewport; the legacy/round bitmaps use 1.21× because the whole 48–192px image
+  is visible. Do not copy one scale to the other.
 
 ## Testing
 

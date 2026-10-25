@@ -1,6 +1,6 @@
-# BG Voice — Android push-to-talk client
+# HASS Voice — Android push-to-talk client
 
-![BG Voice on a vivo V2515](docs/screenshot.png)
+![HASS Voice on a vivo V2515](docs/screenshot.png)
 
 A deliberately small Flutter Android app for
 [`hass-bg-gateway`](https://github.com/kkazakov/hass-bg-gateway): hold the
@@ -211,7 +211,7 @@ lib/
   recorder.dart  `record` wrapper (16 kHz mono WAV)
 test/            model/store/API tests + widget flows (add/edit/delete)
 android/         manifest (mic, internet, cleartext), minSdk 26, targetSdk 35
-docs/            screenshots
+docs/            screenshots and launcher-icon sources
 ```
 
 Useful commands:
@@ -225,6 +225,15 @@ adb logcat | grep -iE "flutter|audioplayers|bg.krasi"
 
 The widget tests use `SharedPreferences.setMockInitialValues({})`; they never
 touch a real gateway or microphone.
+
+## Branding
+
+<img src="docs/branding/hass-voice-icon-512.png" alt="HASS Voice icon" width="128">
+
+The launcher icon is a Home Assistant-blue house that doubles as a speech
+bubble, with a **BG** monogram. The source SVGs (adaptive background and
+foreground, monochrome themed icon, round fallback) and `render-icons.sh` live
+in [`docs/branding/`](docs/branding/).
 
 ## Troubleshooting
 
