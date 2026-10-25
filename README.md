@@ -15,11 +15,11 @@ the command and acts on Home Assistant. Text replies are shown; commands marked
 ## Requirements
 
 1. A running gateway reachable from the phone, e.g.
-   `http://100.101.102.21:8080` (tailnet) or `http://192.168.1.10:8080` (LAN).
+   `http://100.101.102.21:8125` (tailnet) or `http://192.168.1.10:8125` (LAN).
    The gateway must listen on an interface the phone can reach:
 
    ```bash
-   uvicorn app.main:app --host 0.0.0.0 --port 8080   # in hass-bulgarian-commands
+   uvicorn app.main:app --host 0.0.0.0 --port 8125   # in hass-bulgarian-commands
    ```
 
 2. The phone and the gateway on the same network/VPN.

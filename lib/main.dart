@@ -607,7 +607,7 @@ class _GatewayDialogState extends State<GatewayDialog> {
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'URL',
-                hintText: 'http://192.168.1.10:8080',
+                hintText: 'http://192.168.1.10:8125',
               ),
             ),
             const SizedBox(height: 12),
