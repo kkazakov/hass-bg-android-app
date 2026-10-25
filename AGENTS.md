@@ -16,7 +16,7 @@ does ASR/matching/HA; the app is a remote control with local gateway bookmarks.
 - Flutter stable **3.47.x** / Dart 3.13
 - `minSdk 26`, `targetSdk 35`, `compileSdk 36`
 - Gateway default port is **8125**; one gateway = one Home Assistant
-- The app does **not** send `X-API-Key`; the gateway's `BGV_API_KEY` must be empty
+- Optional per-gateway `X-API-Key` (`Gateway.secret`); empty means no auth header
 
 ## Architecture
 
@@ -24,9 +24,10 @@ does ASR/matching/HA; the app is a remote control with local gateway bookmarks.
 HomePage
   ├─ GatewayStore (SharedPreferences)     gateways_v1, active_gateway_v1
   ├─ VoiceRecorder (record)               16 kHz mono PCM16 WAV
-  ├─ GatewayClient (http)                 multipart POST /v1/voice
+  ├─ GatewayClient (http)                 POST /v1/voice + GET reply audio,
+  │     │                                 optional X-API-Key per gateway
   │     └─ CommandResult (models.dart)    kind/transcript/text/audio_url/timings
-  └─ AudioPlayer (audioplayers)           plays audio_url when speak == true
+  └─ AudioPlayer (audioplayers)           BytesSource when speak == true
 ```
 
 State is plain `setState` in `_HomePageState`; there is no state-management
@@ -35,7 +36,8 @@ add, edit or delete.
 
 ### Gateway contract
 
-Request: `multipart/form-data`, field `audio` (WAV).
+Request: `multipart/form-data`, field `audio` (WAV), plus `X-API-Key` when the
+saved gateway has a secret.
 Response fields used: `kind`, `speak`, `text`, `transcript`, `audio_url`,
 `matched.intent`, `matched.score`, `timings.total_ms`, `reason`.
 
@@ -46,7 +48,11 @@ Response fields used: `kind`, `speak`, `text`, `transcript`, `audio_url`,
   exactly one HA. Multiple homes = multiple saved gateways.
 - Commands live in the gateway's catalogue (`commands.yaml` or
   `BGV_COMMANDS_FILE`), not in the app.
-- The app does not send `X-API-Key`; a keyed gateway returns 401.
+- The app sends `X-API-Key` only when the saved gateway has a non-empty
+  `secret`; empty means no header and keyless gateways keep working.
+- The gateway applies `X-API-Key` to **every** `/v1` route, including
+  `/v1/audio/...`, so reply audio must be downloaded through `GatewayClient`,
+  not handed to `audioplayers` as a bare URL.
 
 ## Directory structure
 
@@ -54,13 +60,14 @@ Response fields used: `kind`, `speak`, `text`, `transcript`, `audio_url`,
 lib/
   main.dart      HomePage, gateway chip strip, mic button, result card,
                  GatewayDialog, Bulgarian UI strings
-  models.dart    Gateway (normalizeUrl/defaultName), CommandResult.fromJson
+  models.dart    Gateway (normalizeUrl/defaultName/secret), CommandResult
   store.dart     GatewayStore: SharedPreferences read/write
-  api.dart       GatewayClient: multipart, timeouts, error mapping, audio URI
+  api.dart       GatewayClient: multipart, X-API-Key, audio download, errors
   recorder.dart  VoiceRecorder: `record` wrapper (16 kHz mono WAV)
 test/
-  models_test.dart       URL normalisation, result parsing, store round-trip
-  home_widget_test.dart  add/long-press/delete widget flows
+  models_test.dart       URL normalisation, secret parsing, store round-trip
+  api_test.dart          X-API-Key presence/absence, audio download, 401
+  home_widget_test.dart  add/edit/delete and secret widget flows
 android/                  manifest, SDK levels, launcher
 docs/                     screenshots used by README
 ```
@@ -73,7 +80,7 @@ export PATH=$JAVA_HOME/bin:$PATH
 
 flutter pub get
 flutter analyze
-flutter test                  # 8 tests, no device/gateway needed
+flutter test                  # 18 tests, no device/gateway needed
 flutter build apk --release   # ~50 MB
 adb install -r build/app/outputs/flutter-apk/app-release.apk
 ```
@@ -89,8 +96,9 @@ Debug build is ~167 MB. Do not build with Java 27 — the current AGP rejects it
 - Delete the temporary WAV after send or cancel (`_deleteFile`).
 - Do not add background audio, wake word or always-on microphone without an
   explicit request.
-- If you add `X-API-Key` support, update README, tests and the gateway docs; do
-  not silently require a key.
+- The gateway secret is optional and per entry. Never send an empty
+  `X-API-Key`; keyless gateways must keep working. If auth handling changes,
+  update README, tests and the gateway docs.
 - If the UI changes materially, regenerate `docs/screenshot.png` (the current
   screenshots are cropped above the gateway-URL footer so they do not go stale
   when the default port changes).
@@ -103,17 +111,20 @@ Debug build is ~167 MB. Do not build with Java 27 — the current AGP rejects it
 - **`onTapCancel` cancels the recording** (finger dragged off). Intentional;
   sending on cancel caused accidental commands.
 - **450 ms minimum**: shorter recordings are discarded (`_tooShort`).
-- **Saved URLs are not migrated.** Changing the default port (8080 → 8125) does
-  not rewrite existing gateway entries; the user edits them with long-press.
+- **Saved URLs and secrets are not migrated.** Changing the default port
+  (8080 → 8125) does not rewrite existing gateway entries; the user edits them
+  with long-press. Entries stored before secret support load with an empty one.
 - **Cleartext HTTP is enabled on purpose** (`usesCleartextTraffic="true"`); home
   gateways are plain HTTP. No custom CA/pinning support.
-- **No API key support.** Never point this build at a keyed/public gateway.
+- **`audioplayers` cannot send headers.** `UrlSource` would hit a keyed gateway
+  with a 401, so `_playReply` downloads through `GatewayClient.fetchAudio` and
+  plays `BytesSource`. Keep it that way for keyed audio.
 - **Java 27 breaks the AGP**; build with Java 21.
 - **Release signing** uses the template's debug keystore; it is sideload-only.
 - **Widget tests** must call `SharedPreferences.setMockInitialValues({})` in
   `setUp`.
-- **Playback errors are swallowed** in `_send` (`.catchError((_) {})`). If audio
-  silently fails, check media volume and the gateway's `/v1/audio/...` URL
+- **Playback errors are swallowed** in `_playReply`. If audio silently fails,
+  check media volume, the saved secret and the gateway's `/v1/audio/...` URL
   before changing UI logic.
 - The package id is `bg.krasi.hass_bulgarian_voice`; changing it breaks existing
   stored preferences.
@@ -125,13 +136,17 @@ flutter analyze
 flutter test
 ```
 
-The tests use fake prefs and never touch the microphone, network or a gateway.
-They cover URL normalisation, response parsing, store round-trips, the empty
-state, and add/long-press/delete gateway flows.
+The tests use fake prefs and `MockClient`; they never touch the microphone, a
+real network or a gateway. They cover URL normalisation, secret parsing and
+round-trips, `X-API-Key` presence/absence on voice and audio calls, cross-origin
+audio not leaking the secret, 401 error mapping, the empty state, and
+add/edit/delete/secret widget flows.
 
 ## Security
 
-- The HA token stays on the gateway; only gateway URLs are stored on the phone.
+- The HA token stays on the gateway. The phone stores gateway URLs and optional
+  gateway secrets in app-private `SharedPreferences` (plaintext, not
+  hardware-backed encryption). Android Auto Backup may include them.
 - Audio goes only to the configured gateway. The gateway may forward query text
   to Google when its TTS provider is `gtts`; `piper` keeps it local.
 - Cleartext HTTP is allowed by design; use LAN/Tailscale/VPN, not open Wi-Fi.

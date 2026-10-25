@@ -10,7 +10,13 @@ import 'models.dart';
 import 'recorder.dart';
 import 'store.dart';
 
-void main() => runApp(const BgVoiceApp());
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Portrait only: the manifest locks the activity, this keeps the engine in
+  // step when the platform ignores the attribute (multi-window, large screens).
+  SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
+  runApp(const BgVoiceApp());
+}
 
 class BgVoiceApp extends StatelessWidget {
   const BgVoiceApp({super.key});
@@ -70,6 +76,7 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _recorder.dispose();
     _player.dispose();
+    _client.close();
     super.dispose();
   }
 
@@ -298,8 +305,7 @@ class _HomePageState extends State<HomePage> {
         _status = null;
       });
       if (result.speak && result.audioUrl != null) {
-        final uri = _client.audioUri(gateway, result.audioUrl!);
-        unawaited(_player.play(UrlSource(uri.toString())).catchError((_) {}));
+        unawaited(_playReply(gateway, result.audioUrl!));
       }
     } on ApiException catch (error) {
       if (!mounted) return;
@@ -316,6 +322,20 @@ class _HomePageState extends State<HomePage> {
     } finally {
       if (mounted) setState(() => _sending = false);
       await _deleteFile(path);
+    }
+  }
+
+  Future<void> _playReply(Gateway gateway, String relative) async {
+    try {
+      final reply = await _client.fetchAudio(
+        gateway: gateway,
+        relative: relative,
+      );
+      await _player.play(BytesSource(reply.bytes, mimeType: reply.mimeType));
+    } catch (_) {
+      // Playback is best effort: the text reply is already on screen. A stale
+      // audio_url (gateway restarted) or a wrong secret must not look like a
+      // failed command.
     }
   }
 
@@ -553,6 +573,8 @@ class GatewayDialog extends StatefulWidget {
 class _GatewayDialogState extends State<GatewayDialog> {
   late final TextEditingController _nameController;
   late final TextEditingController _urlController;
+  late final TextEditingController _secretController;
+  bool _obscureSecret = true;
   String? _error;
 
   @override
@@ -560,12 +582,16 @@ class _GatewayDialogState extends State<GatewayDialog> {
     super.initState();
     _nameController = TextEditingController(text: widget.existing?.name ?? '');
     _urlController = TextEditingController(text: widget.existing?.url ?? '');
+    _secretController = TextEditingController(
+      text: widget.existing?.secret ?? '',
+    );
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _urlController.dispose();
+    _secretController.dispose();
     super.dispose();
   }
 
@@ -581,13 +607,15 @@ class _GatewayDialogState extends State<GatewayDialog> {
     final name = _nameController.text.trim().isEmpty
         ? Gateway.defaultName(url)
         : _nameController.text.trim();
+    final secret = _secretController.text.trim();
     final gateway = widget.existing == null
         ? Gateway(
             id: DateTime.now().microsecondsSinceEpoch.toString(),
             name: name,
             url: url,
+            secret: secret,
           )
-        : widget.existing!.copyWith(name: name, url: url);
+        : widget.existing!.copyWith(name: name, url: url, secret: secret);
     Navigator.of(context).pop(gateway);
   }
 
@@ -613,11 +641,33 @@ class _GatewayDialogState extends State<GatewayDialog> {
             const SizedBox(height: 12),
             TextField(
               controller: _nameController,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _submit(),
+              textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Име (по избор)',
                 hintText: 'Вкъщи',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _secretController,
+              obscureText: _obscureSecret,
+              autocorrect: false,
+              enableSuggestions: false,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submit(),
+              decoration: InputDecoration(
+                labelText: 'Тайна (X-API-Key)',
+                helperText: 'По избор; от BGV_API_KEY на gateway',
+                suffixIcon: IconButton(
+                  tooltip: _obscureSecret ? 'Покажи тайната' : 'Скрий тайната',
+                  icon: Icon(
+                    _obscureSecret
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                  onPressed: () =>
+                      setState(() => _obscureSecret = !_obscureSecret),
+                ),
               ),
             ),
             if (_error != null)

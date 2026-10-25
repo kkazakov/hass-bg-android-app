@@ -43,4 +43,45 @@ void main() {
 
     expect(find.textContaining('Няма добавен gateway'), findsOneWidget);
   });
+
+  testWidgets('gateway secret is saved, prefilled and can be cleared', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const BgVoiceApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.add_link));
+    await tester.pumpAndSettle();
+
+    var fields = find.byType(TextField);
+    expect(fields, findsNWidgets(3));
+    expect(tester.widget<TextField>(fields.at(2)).obscureText, isTrue);
+
+    await tester.enterText(fields.at(0), '192.168.1.5:8125');
+    await tester.enterText(fields.at(2), 'top-secret');
+    await tester.tap(find.widgetWithText(FilledButton, 'Добави'));
+    await tester.pumpAndSettle();
+
+    var prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('gateways_v1'), contains('top-secret'));
+    expect(find.textContaining('top-secret'), findsNothing);
+
+    await tester.longPress(find.text('192.168.1.5').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Редактирай'));
+    await tester.pumpAndSettle();
+
+    fields = find.byType(TextField);
+    expect(
+      tester.widget<TextField>(fields.at(2)).controller!.text,
+      'top-secret',
+    );
+
+    await tester.enterText(fields.at(2), '');
+    await tester.tap(find.widgetWithText(FilledButton, 'Запази'));
+    await tester.pumpAndSettle();
+
+    prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('gateways_v1'), isNot(contains('top-secret')));
+  });
 }

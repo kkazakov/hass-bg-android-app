@@ -23,6 +23,51 @@ void main() {
     expect(Gateway.defaultName('not a url'), 'Gateway');
   });
 
+  test('Gateway round-trips an optional secret', () {
+    final gateway = Gateway(
+      id: 'a',
+      name: 'Вкъщи',
+      url: 'http://192.168.1.5:8125',
+      secret: 'top-secret',
+    );
+    expect(gateway.toJson()['secret'], 'top-secret');
+    expect(gateway.hasSecret, isTrue);
+
+    final parsed = Gateway.fromJson(gateway.toJson());
+    expect(parsed.secret, 'top-secret');
+  });
+
+  test('Gateway defaults the secret to empty for old entries', () {
+    final gateway = Gateway.fromJson({
+      'id': 'a',
+      'name': 'Вкъщи',
+      'url': 'http://192.168.1.5:8125',
+    });
+    expect(gateway.secret, isEmpty);
+    expect(gateway.hasSecret, isFalse);
+    expect(gateway.toJson().containsKey('secret'), isFalse);
+
+    final blank = Gateway(
+      id: 'b',
+      name: 'Вкъщи',
+      url: 'http://192.168.1.5:8125',
+      secret: '   ',
+    );
+    expect(blank.hasSecret, isFalse);
+    expect(blank.toJson().containsKey('secret'), isFalse);
+  });
+
+  test('copyWith can change and clear the secret', () {
+    final gateway = Gateway(
+      id: 'a',
+      name: 'Вкъщи',
+      url: 'http://192.168.1.5:8125',
+      secret: 'top-secret',
+    );
+    expect(gateway.copyWith(name: 'Офис').secret, 'top-secret');
+    expect(gateway.copyWith(secret: '').secret, isEmpty);
+  });
+
   test('CommandResult parses an action reply', () {
     final result = CommandResult.fromJson({
       'kind': 'action',
@@ -55,7 +100,12 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final store = GatewayStore();
     final gateways = [
-      Gateway(id: 'a', name: 'Вкъщи', url: 'http://192.168.1.5:8080'),
+      Gateway(
+        id: 'a',
+        name: 'Вкъщи',
+        url: 'http://192.168.1.5:8080',
+        secret: 'top-secret',
+      ),
       Gateway(id: 'b', name: 'Офис', url: 'http://10.0.0.2:8080'),
     ];
 
@@ -64,6 +114,8 @@ void main() {
 
     expect(loaded.gateways, hasLength(2));
     expect(loaded.gateways.first.name, 'Вкъщи');
+    expect(loaded.gateways.first.secret, 'top-secret');
+    expect(loaded.gateways.last.secret, isEmpty);
     expect(loaded.activeId, 'b');
   });
 
@@ -75,5 +127,6 @@ void main() {
     });
     final loaded = await GatewayStore().load();
     expect(loaded.activeId, 'a');
+    expect(loaded.gateways.single.secret, isEmpty);
   });
 }

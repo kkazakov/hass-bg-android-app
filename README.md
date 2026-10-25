@@ -20,7 +20,10 @@ itself. It is a remote control for your own gateway.
   a tap on the chip row at the top. The active entry is remembered across
   launches.
 - **Add / edit / delete**: **＋** adds a gateway; long-press a chip to edit its
-  URL/name or delete it.
+  URL/name/secret or delete it.
+- **Optional gateway secret**: store the gateway's `BGV_API_KEY` per entry; the
+  app sends it as `X-API-Key` for voice calls and reply-audio downloads. Leave
+  it empty for a keyless gateway.
 - **Text replies**: shows what was heard, the reply, the matched intent, score
   and latency.
 - **Spoken queries**: when the gateway returns `audio_url` for a `speak: true`
@@ -36,8 +39,9 @@ itself. It is a remote control for your own gateway.
    `http://100.101.102.21:8125` (Tailscale) or `http://192.168.1.10:8125`
    (LAN). The gateway must listen on an interface the phone can reach
    (`--host 0.0.0.0`, or a Docker publish like `8125:8125`).
-2. The gateway's **API key must be empty** (`BGV_API_KEY=`). The app does not
-   send `X-API-Key` yet; a keyed gateway returns `401`.
+2. If the gateway sets `BGV_API_KEY`, have that value ready: the app sends it as
+   `X-API-Key` on `/v1/voice` and on reply-audio downloads. Leave the secret
+   empty for a keyless gateway.
 3. The phone and gateway on the same network or VPN.
 4. Android 8.0+ (`minSdk 26`). The app targets Android 15 (`targetSdk 35`,
    `compileSdk 36`).
@@ -57,7 +61,7 @@ export PATH=$JAVA_HOME/bin:$PATH
 
 flutter pub get
 flutter analyze
-flutter test                 # 8 tests, no device or gateway needed
+flutter test                 # 18 tests, no device or gateway needed
 flutter build apk --release  # ~50 MB, build/app/outputs/flutter-apk/app-release.apk
 adb install -r build/app/outputs/flutter-apk/app-release.apk
 
@@ -81,6 +85,9 @@ Tap **＋** (top right):
 - **URL**: `100.101.102.21:8125`, `http://192.168.1.10:8125`, etc. If no scheme
   is given, `http://` is added. Trailing slashes are stripped.
 - **Име (по избор)**: a label such as „Вкъщи“. If empty, the host is used.
+- **Тайна (X-API-Key)** (optional): the gateway's `BGV_API_KEY`. Leave empty when
+  the gateway has no key. The value is obscured by default; the eye button
+  reveals it.
 
 The new gateway becomes active immediately and is saved.
 
@@ -111,7 +118,8 @@ The result card shows the transcript (`Чух:`), the gateway's reply, the kind
 
 Long-press a chip:
 
-- **Редактирай** — change URL and/or name.
+- **Редактирай** — change the URL, name and/or secret. The saved secret is
+  prefilled; clear the field to stop sending the header.
 - **Изтрий** — asks for confirmation. If the active gateway is deleted, the
   first remaining one becomes active (or none).
 
@@ -122,6 +130,7 @@ Deleting a gateway does not uninstall the app or clear other entries.
 ```
 POST {gateway}/v1/voice
 Content-Type: multipart/form-data
+X-API-Key: <secret>            (only when the saved gateway has a secret)
 field: audio = command.wav
 
 {
@@ -137,20 +146,27 @@ field: audio = command.wav
 ```
 
 When `speak` is true and `audio_url` is present, the app resolves it against the
-gateway base URL and plays it with `audioplayers` (Android ExoPlayer). The
-gateway may return MP3 (gTTS) or WAV (Piper); both are supported. Audio is
-cached by the gateway in memory, so a stale `audio_url` can return `404` after a
-gateway restart.
+gateway base URL, downloads it with the same `X-API-Key` header (same origin
+only), and plays the bytes with `audioplayers` (Android MediaPlayer). The gateway
+may return MP3 (gTTS) or WAV (Piper); both are supported. Audio is cached by the
+gateway in memory, so a stale `audio_url` can return `404` after a gateway
+restart.
 
 `timings` is shown on the result card. `reason` explains a `no_match` in the
 gateway logs; the card shows the gateway's reply text.
 
 ### Authentication
 
-The app sends **no** `X-API-Key`. Keep `BGV_API_KEY` empty in the gateway. If
-you need to expose the gateway outside a trusted network, set a key and add
-header support to this app (or keep the gateway loopback-only and reach it via a
-VPN). A keyed gateway currently returns `401` for every request from this app.
+The gateway's key is optional and per saved gateway. When the **Тайна
+(X-API-Key)** field is non-empty, the app sends `X-API-Key` on its gateway
+requests: the `/v1/voice` upload and the same-origin `/v1/audio/...` download.
+An empty field sends no header, so keyless gateways keep working. The secret is
+not attached to an absolute `audio_url` that points at another host.
+
+A `401` means the gateway has `BGV_API_KEY` set and the saved secret is missing
+or different. Long-press the gateway chip → **Редактирай** and paste the exact
+value, or clear `BGV_API_KEY` on the gateway. The app does not call `/v1/health`
+or any other endpoint.
 
 ### One gateway = one Home Assistant
 
@@ -173,23 +189,25 @@ Everything is local to the app:
 
 | Storage | Keys | Contents |
 |---|---|---|
-| `SharedPreferences` | `gateways_v1` | JSON list of `{id, name, url}` |
+| `SharedPreferences` | `gateways_v1` | JSON list of `{id, name, url, secret}` (`secret` omitted when empty) |
 | `SharedPreferences` | `active_gateway_v1` | id of the selected gateway |
 
-There are no accounts, tokens or analytics in the app. Uninstalling the app
-removes the gateway list; the HA token and command catalogue live on the
-gateway, not on the phone.
+The optional gateway secret is stored in the app's private `SharedPreferences`
+in plaintext (Android app sandbox, not hardware-backed encryption). It is the
+gateway's shared API key, not the Home Assistant token. There are no accounts or
+analytics in the app. Uninstalling the app removes the gateway list; the HA
+token and command catalogue live on the gateway, not on the phone.
 
 ## Development
 
 ```
 lib/
   main.dart      HomePage, gateway strip, mic button, result card, dialogs
-  models.dart    Gateway (URL normalisation), CommandResult parsing
+  models.dart    Gateway (URL normalisation, optional secret), CommandResult
   store.dart     SharedPreferences persistence
-  api.dart       multipart upload, error mapping, audio URL resolution
+  api.dart       multipart upload, optional X-API-Key, audio download, errors
   recorder.dart  `record` wrapper (16 kHz mono WAV)
-test/            model/store tests + widget flows (add/long-press/delete)
+test/            model/store/API tests + widget flows (add/edit/delete)
 android/         manifest (mic, internet, cleartext), minSdk 26, targetSdk 35
 docs/            screenshots
 ```
@@ -211,7 +229,7 @@ touch a real gateway or microphone.
 | Symptom | Likely cause / fix |
 |---|---|
 | `Няма връзка с http://…` | Gateway not reachable, wrong IP/port, firewall, or it listens on loopback only. Default port is **8125**; check `curl http://<host>:8125/v1/health`. |
-| `Gateway върна 401` | `BGV_API_KEY` is set on the gateway; the app sends no key. Clear it or add header support. |
+| `Gateway изисква валидна тайна (X-API-Key)` | The gateway has `BGV_API_KEY` set but the saved secret is missing or wrong. Long-press → Редактирай and paste the exact key, or clear `BGV_API_KEY` on the gateway. |
 | `Gateway не отговаря (timeout)` | Gateway host down, phone VPN off, or slow first ASR load. |
 | „Не разбрах. Повторете, моля.“ | The gateway heard you but no phrase matched. Add the phrase/hotwords to its catalogue; check `/v1/commands`. |
 | Result appears but no sound | Media volume/route, or audio playback failed silently. Check volume and the gateway's `GET /v1/audio/...`; the app fetches MP3/WAV. |
@@ -226,7 +244,10 @@ command-catalogue instructions:
 
 ## Known limits
 
-- No `X-API-Key` support yet; the gateway must have an empty key.
+- One optional shared key (`BGV_API_KEY`) per gateway; no per-user keys or
+  in-app rotation.
+- The secret is stored in app-private `SharedPreferences`, not encrypted at
+  rest.
 - HTTP/HTTPS only, no custom CA or certificate pinning.
 - Push-to-talk only; no wake word, streaming partials or background listening.
 - One active gateway per request; no per-command routing between gateways.
@@ -236,13 +257,17 @@ command-catalogue instructions:
 
 ## Security notes
 
-- The gateway URL, not the HA token, is stored on the phone. The HA token stays
-  on the gateway.
+- The gateway URL and optional gateway secret, not the HA token, are stored on
+  the phone. The HA token stays on the gateway.
+- The gateway secret is kept in app-private `SharedPreferences` in plaintext.
+  Use a dedicated key, not a reused password, and prefer HTTPS/VPN transport.
+  Android Auto Backup may include app preferences; exclude the app from backup
+  if the key must not leave the device.
 - Audio is sent only to the configured gateway. If the gateway's TTS provider is
   `gtts`, the *answer text* of spoken queries is sent to Google by the gateway;
   `piper` keeps it local.
 - Prefer Tailscale/LAN or a VPN. If you expose the gateway publicly, terminate
-  HTTPS at a reverse proxy, set an API key, and add `X-API-Key` support to the
-  app before using it.
+  HTTPS at a reverse proxy, set an API key, and enter that key in the gateway
+  entry (long-press → Редактирай).
 - The app allows cleartext traffic by design; do not use it over untrusted
   networks.
