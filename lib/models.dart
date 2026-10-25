@@ -6,10 +6,10 @@ class Gateway {
   final String url;
 
   factory Gateway.fromJson(Map<String, dynamic> json) => Gateway(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        url: json['url'] as String,
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    url: json['url'] as String,
+  );
 
   Map<String, dynamic> toJson() => {'id': id, 'name': name, 'url': url};
 
@@ -68,8 +68,12 @@ class CommandResult {
       transcript: (json['transcript'] as String?) ?? '',
       audioUrl: json['audio_url'] as String?,
       intent: matched is Map ? matched['intent'] as String? : null,
-      matchScore: matched is Map ? (matched['score'] as num?)?.toDouble() : null,
-      totalMs: timings is Map ? (timings['total_ms'] as num?)?.toDouble() : null,
+      matchScore: matched is Map
+          ? (matched['score'] as num?)?.toDouble()
+          : null,
+      totalMs: timings is Map
+          ? (timings['total_ms'] as num?)?.toDouble()
+          : null,
     );
   }
 }

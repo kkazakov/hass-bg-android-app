@@ -31,8 +31,9 @@ export PATH=$JAVA_HOME/bin:$PATH
 
 flutter pub get
 flutter test                 # 8 tests, no device needed
-flutter build apk --debug    # build/app/outputs/flutter-apk/app-debug.apk
-adb install -r build/app/outputs/flutter-apk/app-debug.apk
+flutter build apk --release  # 52 MB, build/app/outputs/flutter-apk/app-release.apk
+adb install -r build/app/outputs/flutter-apk/app-release.apk
+# debug build (167 MB, faster iteration): flutter build apk --debug
 ```
 
 Flutter stable 3.47.x is expected (Dart 3.13).

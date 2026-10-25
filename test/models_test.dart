@@ -19,10 +19,7 @@ void main() {
   });
 
   test('defaultName falls back to the host', () {
-    expect(
-      Gateway.defaultName('http://100.101.102.12:8080'),
-      '100.101.102.12',
-    );
+    expect(Gateway.defaultName('http://100.101.102.12:8080'), '100.101.102.12');
     expect(Gateway.defaultName('not a url'), 'Gateway');
   });
 

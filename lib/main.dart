@@ -166,10 +166,7 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              title: Text(gateway.name),
-              subtitle: Text(gateway.url),
-            ),
+            ListTile(title: Text(gateway.name), subtitle: Text(gateway.url)),
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.edit_outlined),
@@ -294,10 +291,7 @@ class _HomePageState extends State<HomePage> {
       _error = null;
     });
     try {
-      final result = await _client.sendCommand(
-        gateway: gateway,
-        wavPath: path,
-      );
+      final result = await _client.sendCommand(gateway: gateway, wavPath: path);
       if (!mounted) return;
       setState(() {
         _result = result;
@@ -356,7 +350,10 @@ class _HomePageState extends State<HomePage> {
             Expanded(
               child: Center(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 520),
                     child: Column(
@@ -447,8 +444,8 @@ class _HomePageState extends State<HomePage> {
     final color = _recording
         ? theme.colorScheme.error
         : _sending
-            ? theme.colorScheme.secondary
-            : theme.colorScheme.primary;
+        ? theme.colorScheme.secondary
+        : theme.colorScheme.primary;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => _onPressStart(),
@@ -599,38 +596,40 @@ class _GatewayDialogState extends State<GatewayDialog> {
     final editing = widget.existing != null;
     return AlertDialog(
       title: Text(editing ? 'Редактирай gateway' : 'Нов gateway'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _urlController,
-            autofocus: true,
-            keyboardType: TextInputType.url,
-            textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(
-              labelText: 'URL',
-              hintText: 'http://192.168.1.10:8080',
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _nameController,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _submit(),
-            decoration: const InputDecoration(
-              labelText: 'Име (по избор)',
-              hintText: 'Вкъщи',
-            ),
-          ),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(
-                _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _urlController,
+              autofocus: true,
+              keyboardType: TextInputType.url,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'URL',
+                hintText: 'http://192.168.1.10:8080',
               ),
             ),
-        ],
+            const SizedBox(height: 12),
+            TextField(
+              controller: _nameController,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submit(),
+              decoration: const InputDecoration(
+                labelText: 'Име (по избор)',
+                hintText: 'Вкъщи',
+              ),
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(
+                  _error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
       actions: [
         TextButton(

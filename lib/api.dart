@@ -26,8 +26,8 @@ class GatewayClient {
       final request = http.MultipartRequest('POST', uri)
         ..files.add(await http.MultipartFile.fromPath('audio', wavPath));
       final streamed = await request.send().timeout(timeout);
-      final response =
-          await http.Response.fromStream(streamed).timeout(timeout);
+      final response = await http.Response.fromStream(streamed)
+          .timeout(timeout);
 
       if (response.statusCode != 200) {
         throw ApiException(_describeError(response));
