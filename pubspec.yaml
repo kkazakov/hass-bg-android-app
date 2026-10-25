@@ -1,7 +1,7 @@
 name: hass_bulgarian_voice
 description: "HASS Voice — push-to-talk Android client for hass-bg-gateway."
 publish_to: 'none'
-version: 1.1.0+2
+version: 0.1.0+1
 
 environment:
   sdk: ^3.13.7
