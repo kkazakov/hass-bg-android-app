@@ -2,89 +2,247 @@
 
 ![BG Voice on a vivo V2515](docs/screenshot.png)
 
-Minimal Flutter Android app for [`hass-bulgarian-commands`](../hass-bulgarian-commands):
-hold the microphone, speak Bulgarian, release — the gateway transcribes, matches
-the command and acts on Home Assistant. Text replies are shown; commands marked
-`speak: true` also play the spoken answer.
+A deliberately small Flutter Android app for
+[`hass-bg-gateway`](https://github.com/kkazakov/hass-bg-gateway): hold the
+microphone, speak Bulgarian, release. The gateway transcribes the audio, matches
+one of its configured phrases, executes it against Home Assistant, and returns a
+text reply. For questions marked `speak: true`, the app also plays the spoken
+answer.
 
-* **Targets Android 15** (`targetSdk 35`, `compileSdk 36`), runs on Android 8.0+
-  (`minSdk 26`). Set `minSdk = 35` in `android/app/build.gradle.kts` if you want
-  Android 15+ only.
-* No cloud, no analytics, no background listening.
+There is no wake word, no background listening, and no cloud service in the app
+itself. It is a remote control for your own gateway.
+
+## What it does
+
+- **Push-to-talk**: press and hold the big mic button, release to send. A press
+  shorter than 450 ms is discarded.
+- **Multiple gateways**: keep one entry per Home Assistant/gateway, switch with
+  a tap on the chip row at the top. The active entry is remembered across
+  launches.
+- **Add / edit / delete**: **＋** adds a gateway; long-press a chip to edit its
+  URL/name or delete it.
+- **Text replies**: shows what was heard, the reply, the matched intent, score
+  and latency.
+- **Spoken queries**: when the gateway returns `audio_url` for a `speak: true`
+  command, the app fetches and plays it (MP3 or WAV).
+- **Bulgarian UI**, dark/light Material 3, no accounts and no telemetry.
+
+![Query result](docs/loopback-test.png)
 
 ## Requirements
 
-1. A running gateway reachable from the phone, e.g.
-   `http://100.101.102.21:8125` (tailnet) or `http://192.168.1.10:8125` (LAN).
-   The gateway must listen on an interface the phone can reach:
+1. A running [`hass-bg-gateway`](https://github.com/kkazakov/hass-bg-gateway)
+   reachable from the phone. The default port is **8125**, e.g.
+   `http://100.101.102.21:8125` (Tailscale) or `http://192.168.1.10:8125`
+   (LAN). The gateway must listen on an interface the phone can reach
+   (`--host 0.0.0.0`, or a Docker publish like `8125:8125`).
+2. The gateway's **API key must be empty** (`BGV_API_KEY=`). The app does not
+   send `X-API-Key` yet; a keyed gateway returns `401`.
+3. The phone and gateway on the same network or VPN.
+4. Android 8.0+ (`minSdk 26`). The app targets Android 15 (`targetSdk 35`,
+   `compileSdk 36`).
 
-   ```bash
-   uvicorn app.main:app --host 0.0.0.0 --port 8125   # in hass-bulgarian-commands
-   ```
-
-2. The phone and the gateway on the same network/VPN.
-3. Android 8.0 or newer.
+The app does not care which commands exist: the catalogue lives in the
+gateway's `config/commands.yaml` (or `BGV_COMMANDS_FILE`). Add the phrases there,
+reload the gateway, and the app can use them immediately.
 
 ## Build and install
 
+Flutter stable **3.47.x** (Dart 3.13) and Java **17–21**. Java 27 breaks the
+current Android Gradle Plugin used by this project; use 21.
+
 ```bash
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk   # Java 17–21; 27 is too new for this AGP
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
 export PATH=$JAVA_HOME/bin:$PATH
 
 flutter pub get
-flutter test                 # 8 tests, no device needed
-flutter build apk --release  # 52 MB, build/app/outputs/flutter-apk/app-release.apk
+flutter analyze
+flutter test                 # 8 tests, no device or gateway needed
+flutter build apk --release  # ~50 MB, build/app/outputs/flutter-apk/app-release.apk
 adb install -r build/app/outputs/flutter-apk/app-release.apk
-# debug build (167 MB, faster iteration): flutter build apk --debug
+
+# faster iteration, larger debug engine:
+# flutter build apk --debug  # ~167 MB
 ```
 
-Flutter stable 3.47.x is expected (Dart 3.13).
+The release build is signed with the **debug keystore** from the Flutter
+template. That is fine for sideloading, not for Play Store distribution; add a
+proper signing config before publishing.
+
+If `adb` is not available, copy the APK to the phone and install it manually
+(allow installation from unknown sources for the file manager/browser used).
 
 ## Using it
 
-1. **＋** (top right) → enter the gateway URL (`host:port` is accepted; `http://`
-   is added automatically). The name defaults to the host and can be changed.
-2. The gateways appear as chips at the top. Tap one to switch; the selection is
-   stored as default and restored on the next launch.
-3. **Hold the microphone**, speak, **release**. The command is uploaded, the reply
-   appears below (transcript, intent, score, latency).
-4. **Long-press a chip** → *Редактирай* (URL/name) or *Изтрий* (with confirmation).
+### Add a gateway
 
-The app records 16 kHz mono PCM16 WAV, which the gateway accepts. Temporary files
-are deleted after sending. If you release too quickly (< 450 ms) nothing is sent.
+Tap **＋** (top right):
+
+- **URL**: `100.101.102.21:8125`, `http://192.168.1.10:8125`, etc. If no scheme
+  is given, `http://` is added. Trailing slashes are stripped.
+- **Име (по избор)**: a label such as „Вкъщи“. If empty, the host is used.
+
+The new gateway becomes active immediately and is saved.
+
+### Switch between gateways
+
+The chips at the top are the saved gateways. Tap one to make it active. The
+active id is stored in `SharedPreferences` and restored on the next launch. The
+gateway URL is shown at the bottom while idle.
+
+### Talk
+
+Hold the centre button and speak, then release:
+
+```
+press → RECORD_AUDIO permission (first time) → record 16 kHz mono PCM16 WAV
+release → POST multipart /v1/voice → show reply → play audio if speak == true
+```
+
+- Releasing before 450 ms shows „Задръж по-дълго“ and sends nothing.
+- Dragging the finger off the button cancels the recording.
+- While sending, the button shows a spinner and further presses are ignored.
+- Temporary WAV files are deleted after send or cancel.
+
+The result card shows the transcript (`Чух:`), the gateway's reply, the kind
+(`action` / `query` / `no_match`), intent, score and total latency.
+
+### Edit or delete a gateway
+
+Long-press a chip:
+
+- **Редактирай** — change URL and/or name.
+- **Изтрий** — asks for confirmation. If the active gateway is deleted, the
+  first remaining one becomes active (or none).
+
+Deleting a gateway does not uninstall the app or clear other entries.
 
 ## How it talks to the gateway
 
 ```
-POST {gateway}/v1/voice     multipart field "audio" (WAV)
-→ { kind, speak, text, transcript, audio_url, matched, timings }
-GET  {gateway}/v1/audio/... reply WAV (played when speak == true)
+POST {gateway}/v1/voice
+Content-Type: multipart/form-data
+field: audio = command.wav
+
+{
+  "kind": "action" | "query" | "no_match",
+  "speak": false,
+  "text": "Изключих лампата.",
+  "transcript": "изключи лампата",
+  "audio_url": null,
+  "matched": {"intent": "LightOff", "score": 100.0, ...},
+  "timings": {"asr_ms": 85.0, "ha_ms": 12.0, "tts_ms": 0.0, "total_ms": 120.0},
+  "reason": null
+}
 ```
 
-No API key is sent (the gateway has none configured by default). If you set
-`BGV_API_KEY` on the gateway, this client will get 401 until header support is
-added — keep the gateway on a trusted network until then.
+When `speak` is true and `audio_url` is present, the app resolves it against the
+gateway base URL and plays it with `audioplayers` (Android ExoPlayer). The
+gateway may return MP3 (gTTS) or WAV (Piper); both are supported. Audio is
+cached by the gateway in memory, so a stale `audio_url` can return `404` after a
+gateway restart.
 
-Cleartext HTTP is enabled (`android:usesCleartextTraffic="true"`) because home
-gateways usually run plain HTTP on the LAN/tailnet.
+`timings` is shown on the result card. `reason` explains a `no_match` in the
+gateway logs; the card shows the gateway's reply text.
 
-## Project layout
+### Authentication
+
+The app sends **no** `X-API-Key`. Keep `BGV_API_KEY` empty in the gateway. If
+you need to expose the gateway outside a trusted network, set a key and add
+header support to this app (or keep the gateway loopback-only and reach it via a
+VPN). A keyed gateway currently returns `401` for every request from this app.
+
+### One gateway = one Home Assistant
+
+The gateway is bound to a single HA instance. If you have two homes, save two
+gateway URLs as separate chips; each gateway has its own HA, token and command
+catalogue. The app itself has no notion of instances.
+
+## Permissions and networking
+
+- `RECORD_AUDIO` — requested on the first hold.
+- `INTERNET` — uploads the WAV and downloads reply audio.
+- Cleartext HTTP is enabled (`android:usesCleartextTraffic="true"`) because home
+  gateways are usually plain HTTP on a LAN/Tailscale. HTTPS with a public
+  certificate works too, but there is no custom-CA/pinning support.
+- No foreground service, no background recording, no notifications.
+
+## Configuration and state
+
+Everything is local to the app:
+
+| Storage | Keys | Contents |
+|---|---|---|
+| `SharedPreferences` | `gateways_v1` | JSON list of `{id, name, url}` |
+| `SharedPreferences` | `active_gateway_v1` | id of the selected gateway |
+
+There are no accounts, tokens or analytics in the app. Uninstalling the app
+removes the gateway list; the HA token and command catalogue live on the
+gateway, not on the phone.
+
+## Development
 
 ```
 lib/
-  main.dart       UI: gateway chips, hold-to-talk button, dialogs
-  models.dart     Gateway + CommandResult, URL normalisation
-  store.dart      SharedPreferences persistence (gateways + active id)
-  api.dart        multipart upload, error mapping, audio URL
-  recorder.dart   record wrapper (16 kHz mono WAV)
-test/             model/store/widget tests (8)
-android/          minSdk 26, targetSdk 35, RECORD_AUDIO + INTERNET
+  main.dart      HomePage, gateway strip, mic button, result card, dialogs
+  models.dart    Gateway (URL normalisation), CommandResult parsing
+  store.dart     SharedPreferences persistence
+  api.dart       multipart upload, error mapping, audio URL resolution
+  recorder.dart  `record` wrapper (16 kHz mono WAV)
+test/            model/store tests + widget flows (add/long-press/delete)
+android/         manifest (mic, internet, cleartext), minSdk 26, targetSdk 35
+docs/            screenshots
 ```
+
+Useful commands:
+
+```bash
+flutter analyze
+flutter test
+flutter run -d <device-id>       # debug on a connected device
+adb logcat | grep -iE "flutter|audioplayers|bg.krasi"
+```
+
+The widget tests use `SharedPreferences.setMockInitialValues({})`; they never
+touch a real gateway or microphone.
+
+## Troubleshooting
+
+| Symptom | Likely cause / fix |
+|---|---|
+| `Няма връзка с http://…` | Gateway not reachable, wrong IP/port, firewall, or it listens on loopback only. Default port is **8125**; check `curl http://<host>:8125/v1/health`. |
+| `Gateway върна 401` | `BGV_API_KEY` is set on the gateway; the app sends no key. Clear it or add header support. |
+| `Gateway не отговаря (timeout)` | Gateway host down, phone VPN off, or slow first ASR load. |
+| „Не разбрах. Повторете, моля.“ | The gateway heard you but no phrase matched. Add the phrase/hotwords to its catalogue; check `/v1/commands`. |
+| Result appears but no sound | Media volume/route, or audio playback failed silently. Check volume and the gateway's `GET /v1/audio/...`; the app fetches MP3/WAV. |
+| „Няма разрешение за микрофон“ | Grant Microphone permission in Android settings. |
+| Button does nothing | Press was shorter than 450 ms, or the app is still sending (spinner). |
+| APK won't install | Android < 8.0, or the package/signature conflicts with another install. |
+| Gateway URL footer shows an old port | Edit the chip URL (long-press → Редактирай); the app does not migrate saved URLs. |
+
+The gateway side has its own README, including Docker, HTTPS, API key and
+command-catalogue instructions:
+<https://github.com/kkazakov/hass-bg-gateway>.
 
 ## Known limits
 
-- Push-to-talk only; no wake word, no background listening.
-- One gateway per request (no per-command instance routing yet).
-- No API key / custom CA support yet; HTTP only.
-- Debug APK is ~167 MB (Flutter debug engine); a release build is much smaller
-  but needs signing.
+- No `X-API-Key` support yet; the gateway must have an empty key.
+- HTTP/HTTPS only, no custom CA or certificate pinning.
+- Push-to-talk only; no wake word, streaming partials or background listening.
+- One active gateway per request; no per-command routing between gateways.
+- No in-app command list; commands are edited on the gateway.
+- UI is Bulgarian only.
+- Release APK is debug-signed and not Play-Store ready.
+
+## Security notes
+
+- The gateway URL, not the HA token, is stored on the phone. The HA token stays
+  on the gateway.
+- Audio is sent only to the configured gateway. If the gateway's TTS provider is
+  `gtts`, the *answer text* of spoken queries is sent to Google by the gateway;
+  `piper` keeps it local.
+- Prefer Tailscale/LAN or a VPN. If you expose the gateway publicly, terminate
+  HTTPS at a reverse proxy, set an API key, and add `X-API-Key` support to the
+  app before using it.
+- The app allows cleartext traffic by design; do not use it over untrusted
+  networks.
