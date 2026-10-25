@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
@@ -42,6 +43,14 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  // The mic keeps a fixed layout slot so feedback appearing below it can never
+  // move it; only the circle inside the slot animates while recording.
+  static const double _micSlotSize = 168;
+  static const double _micIdleSize = 156;
+  // Slot centre as a share of the free height: a bit above the middle, leaving
+  // room for the result card underneath.
+  static const double _micCenterFraction = 0.42;
+
   final GatewayStore _store = GatewayStore();
   final GatewayClient _client = GatewayClient();
   final VoiceRecorder _recorder = VoiceRecorder();
@@ -368,43 +377,31 @@ class _HomePageState extends State<HomePage> {
             if (_loading) const LinearProgressIndicator(minHeight: 2),
             _buildGatewayStrip(theme),
             Expanded(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 16,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 520),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildMicButton(theme),
-                        const SizedBox(height: 18),
-                        Text(
-                          _recording ? 'Пусни за изпращане' : 'Задръж и говори',
-                          style: theme.textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 12),
-                        if (_status != null) Text(_status!),
-                        if (_error != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                              _error!,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: theme.colorScheme.error),
-                            ),
-                          ),
-                        if (_result != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 20),
-                            child: _ResultCard(result: _result!),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final topGap = math.max(
+                    8.0,
+                    constraints.maxHeight * _micCenterFraction -
+                        _micSlotSize / 2,
+                  );
+                  return Column(
+                    children: [
+                      SizedBox(height: topGap),
+                      _buildMicButton(theme),
+                      const SizedBox(height: 18),
+                      Text(
+                        _recording ? 'Пусни за изпращане' : 'Задръж и говори',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 12),
+                      // Feedback and the result card live in their own fixed
+                      // region, so showing or hiding them never re-centres the
+                      // mic and breaks a hold gesture.
+                      Expanded(child: _buildFeedback(theme)),
+                    ],
+                  );
+                },
               ),
             ),
             Padding(
@@ -460,45 +457,82 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildFeedback(ThemeData theme) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_status != null) Text(_status!, textAlign: TextAlign.center),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    _error!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
+                ),
+              if (_result != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 20),
+                  child: _ResultCard(result: _result!),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMicButton(ThemeData theme) {
     final color = _recording
         ? theme.colorScheme.error
         : _sending
         ? theme.colorScheme.secondary
         : theme.colorScheme.primary;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => _onPressStart(),
-      onTapUp: (_) => _onPressEnd(),
-      onTapCancel: _onPressCancel,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: _recording ? 168 : 156,
-        height: _recording ? 168 : 156,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color,
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.35),
-              blurRadius: _recording ? 32 : 18,
-              spreadRadius: _recording ? 8 : 2,
-            ),
-          ],
-        ),
-        child: _sending
-            ? const Padding(
-                padding: EdgeInsets.all(56),
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  color: Colors.white,
+    return SizedBox(
+      width: _micSlotSize,
+      height: _micSlotSize,
+      child: Center(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => _onPressStart(),
+          onTapUp: (_) => _onPressEnd(),
+          onTapCancel: _onPressCancel,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: _recording ? _micSlotSize : _micIdleSize,
+            height: _recording ? _micSlotSize : _micIdleSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color,
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.35),
+                  blurRadius: _recording ? 32 : 18,
+                  spreadRadius: _recording ? 8 : 2,
                 ),
-              )
-            : Icon(
-                _recording ? Icons.graphic_eq : Icons.mic,
-                size: 72,
-                color: theme.colorScheme.onPrimary,
-              ),
+              ],
+            ),
+            child: _sending
+                ? const Padding(
+                    padding: EdgeInsets.all(56),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      color: Colors.white,
+                    ),
+                  )
+                : Icon(
+                    _recording ? Icons.graphic_eq : Icons.mic,
+                    size: 72,
+                    color: theme.colorScheme.onPrimary,
+                  ),
+          ),
+        ),
       ),
     );
   }

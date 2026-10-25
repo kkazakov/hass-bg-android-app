@@ -99,7 +99,7 @@ gateway URL is shown at the bottom while idle.
 
 ### Talk
 
-Hold the centre button and speak, then release:
+Hold the mic button and speak, then release:
 
 ```
 press → RECORD_AUDIO permission (first time) → record 16 kHz mono PCM16 WAV
@@ -111,8 +111,10 @@ release → POST multipart /v1/voice → show reply → play audio if speak == t
 - While sending, the button shows a spinner and further presses are ignored.
 - Temporary WAV files are deleted after send or cancel.
 
-The result card shows the transcript (`Чух:`), the gateway's reply, the kind
-(`action` / `query` / `no_match`), intent, score and total latency.
+The result card appears below the mic, which stays fixed in place; showing or
+clearing it never moves the button under your finger. The card shows the
+transcript (`Чух:`), the gateway's reply, the kind (`action` / `query` /
+`no_match`), intent, score and total latency.
 
 ### Edit or delete a gateway
 

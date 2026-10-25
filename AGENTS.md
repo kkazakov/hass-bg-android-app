@@ -110,6 +110,11 @@ Debug build is ~167 MB. Do not build with Java 27 — the current AGP rejects it
   window. Do not remove them; a fast tap otherwise leaves the recorder running.
 - **`onTapCancel` cancels the recording** (finger dragged off). Intentional;
   sending on cancel caused accidental commands.
+- **The mic must not move when feedback appears.** It sits in a fixed 168 dp
+  slot at 42% of the free height; status, errors and the result card live in a
+  separate scrollable region below. Do not put them back in one centred column
+  with the button: clearing the result on the next press would move the button
+  under the finger and turn the hold into an `onTapCancel`.
 - **450 ms minimum**: shorter recordings are discarded (`_tooShort`).
 - **Saved URLs and secrets are not migrated.** Changing the default port
   (8080 → 8125) does not rewrite existing gateway entries; the user edits them
